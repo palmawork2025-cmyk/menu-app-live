@@ -13,7 +13,7 @@ export default function ShoppingListScreen({ onOpenMenu }) {
   const { family, displayName } = useFamily()
   const { menus } = useMenus(family.id)
   const { ingredients } = useIngredients(family.id)
-  const { items, loading, toggleChecked, updateItem, deleteItem, deleteItems, clearChecked, addManualItem, addFromMenuLines } = useShoppingList(family.id)
+  const { items, loading, toggleChecked, updateItem, deleteItem, deleteItems, clearChecked, clearAll, addManualItem, addFromMenuLines } = useShoppingList(family.id)
 
   const [busyScope, setBusyScope] = useState(null)
   const [showManual, setShowManual] = useState(false)
@@ -23,6 +23,12 @@ export default function ShoppingListScreen({ onOpenMenu }) {
   const [selectMode, setSelectMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState(() => new Set())
   const [editingItem, setEditingItem] = useState(null)
+  const [confirmingClearAll, setConfirmingClearAll] = useState(false)
+
+  async function handleClearAll() {
+    await clearAll()
+    setConfirmingClearAll(false)
+  }
 
   function toggleSelectMode() {
     setSelectMode((v) => !v)
@@ -114,11 +120,28 @@ export default function ShoppingListScreen({ onOpenMenu }) {
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-black text-stone-800">買い物リスト</h1>
         {items.length > 0 && (
-          <GhostButton onClick={toggleSelectMode} className={selectMode ? 'bg-stone-200' : 'bg-white shadow-sm'}>
-            {selectMode ? 'キャンセル' : '選択して削除'}
-          </GhostButton>
+          <div className="flex gap-1.5">
+            <GhostButton onClick={toggleSelectMode} className={selectMode ? 'bg-stone-200' : 'bg-white shadow-sm'}>
+              {selectMode ? 'キャンセル' : '選択して削除'}
+            </GhostButton>
+            <GhostButton onClick={() => setConfirmingClearAll(true)} className="bg-white text-red-500 shadow-sm">
+              全て削除
+            </GhostButton>
+          </div>
         )}
       </div>
+
+      {confirmingClearAll && (
+        <div className="rounded-2xl bg-red-50 p-3">
+          <p className="text-sm font-bold text-red-600">買い物リストを全て削除します。よろしいですか？</p>
+          <div className="mt-2 grid grid-cols-2 gap-2">
+            <SecondaryButton onClick={() => setConfirmingClearAll(false)}>キャンセル</SecondaryButton>
+            <button onClick={handleClearAll} className="w-full rounded-2xl bg-red-500 py-3.5 text-base font-bold text-white active:bg-red-600">
+              全て削除する
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-2">
         <SecondaryButton onClick={() => addFromScope('today')} disabled={busyScope !== null}>
@@ -357,8 +380,12 @@ function ManualAddModal({ ingredients, onClose, onAdd }) {
         </div>
         {!notScalable && (
           <div className="flex gap-1.5">
-            <TextInput type="number" step="any" placeholder="数量" value={quantity} onChange={(e) => setQuantity(e.target.value)} className="w-24" />
-            <TextInput placeholder="単位" value={unit} onChange={(e) => setUnit(e.target.value)} className="flex-1" />
+            <div className="w-24 shrink-0">
+              <TextInput type="number" step="any" placeholder="数量" value={quantity} onChange={(e) => setQuantity(e.target.value)} />
+            </div>
+            <div className="min-w-0 flex-1">
+              <TextInput placeholder="単位" value={unit} onChange={(e) => setUnit(e.target.value)} />
+            </div>
           </div>
         )}
         <label className="flex items-center gap-1.5 text-xs text-stone-400">
@@ -396,8 +423,12 @@ function EditQuantityModal({ item, onClose, onSave }) {
           <TextInput placeholder="例：半分、あまり、適量" value={displayText} onChange={(e) => setDisplayText(e.target.value)} autoFocus />
         ) : (
           <div className="flex gap-1.5">
-            <TextInput type="number" step="any" placeholder="数量" value={quantity} onChange={(e) => setQuantity(e.target.value)} className="w-24" autoFocus />
-            <TextInput placeholder="単位" value={unit} onChange={(e) => setUnit(e.target.value)} className="flex-1" />
+            <div className="w-24 shrink-0">
+              <TextInput type="number" step="any" placeholder="数量" value={quantity} onChange={(e) => setQuantity(e.target.value)} autoFocus />
+            </div>
+            <div className="min-w-0 flex-1">
+              <TextInput placeholder="単位" value={unit} onChange={(e) => setUnit(e.target.value)} />
+            </div>
           </div>
         )}
         <label className="flex items-center gap-1.5 text-xs text-stone-400">

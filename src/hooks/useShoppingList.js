@@ -71,6 +71,15 @@ export function useShoppingList(familyId) {
     await reload()
   }, [familyId, reload])
 
+  const clearAll = useCallback(async () => {
+    const { error } = await supabase
+      .from('shopping_list_items')
+      .delete()
+      .eq('family_id', familyId)
+    if (error) throw error
+    await reload()
+  }, [familyId, reload])
+
   const addManualItem = useCallback(async ({ name, unit = '', quantity = null, displayText = null, source = 'manual', addedBy = null }) => {
     const { error } = await supabase.from('shopping_list_items').insert({
       family_id: familyId, name: name.trim(), unit, quantity, display_text: displayText, source, added_by: addedBy,
@@ -130,5 +139,5 @@ export function useShoppingList(familyId) {
     await reload()
   }, [familyId, reload])
 
-  return { items, loading, toggleChecked, updateItem, deleteItem, deleteItems, clearChecked, addManualItem, addFromMenuLines, reload }
+  return { items, loading, toggleChecked, updateItem, deleteItem, deleteItems, clearChecked, clearAll, addManualItem, addFromMenuLines, reload }
 }
