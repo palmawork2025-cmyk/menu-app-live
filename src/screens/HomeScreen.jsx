@@ -5,6 +5,7 @@ import { useMenus } from '../hooks/useMenus'
 import { todayISO, toISODate, addDays } from '../lib/dates'
 import { buildRecommendation } from '../lib/recommend'
 import { Card, EmptyState, PrimaryButton, SecondaryButton, Spinner } from '../components/ui'
+import homeBanner from '../assets/home-banner.png'
 
 const HISTORY_DAYS = 14
 
@@ -28,6 +29,8 @@ export default function HomeScreen({ onOpenSettings, onGoShopping, onGoPlan, onO
           ⚙️
         </button>
       </header>
+
+      <img src={homeBanner} alt="" className="aspect-[3/2] w-full rounded-3xl object-cover shadow-sm" />
 
       <Card>
         <p className="text-xs font-bold text-stone-400">🩺 献立バランスのアドバイス</p>

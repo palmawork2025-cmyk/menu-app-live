@@ -2,9 +2,9 @@ import { useState } from 'react'
 import { useFamily } from '../lib/FamilyContext'
 import { useMenus } from '../hooks/useMenus'
 import { Chip, EmptyState, GhostButton, Spinner, TextInput } from '../components/ui'
+import { CategoryIcon } from '../lib/categoryIcons'
 
 const CATEGORIES = ['すべて', '肉', '魚', '野菜', 'ご飯', '麺', '圧力鍋', 'その他']
-const CATEGORY_ICON = { 肉: '🥩', 魚: '🐟', 野菜: '🥦', ご飯: '🍚', 麺: '🍜', 圧力鍋: '🍲', その他: '🍽️' }
 
 export default function MenuListScreen({ onOpenMenu, onNewMenu, onOpenStaples }) {
   const { family } = useFamily()
@@ -45,7 +45,7 @@ export default function MenuListScreen({ onOpenMenu, onNewMenu, onOpenStaples })
                 onClick={() => onOpenMenu(m.id)}
                 className="flex w-full items-center gap-3 rounded-2xl bg-white px-4 py-3 text-left shadow-sm active:bg-orange-50"
               >
-                <span className="text-2xl">{CATEGORY_ICON[m.category] || '🍽️'}</span>
+                <CategoryIcon category={m.category} className="h-10 w-10" />
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-bold text-stone-700">{m.name}</p>
                   <p className="text-xs text-stone-400">{m.category} ・ 材料{m.ingredients.length}点</p>

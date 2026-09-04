@@ -4,8 +4,7 @@ import { useMenus } from '../hooks/useMenus'
 import { useShoppingList } from '../hooks/useShoppingList'
 import { scaleQuantity, formatQuantityLine } from '../lib/quantity'
 import { Card, GhostButton, PrimaryButton, ScreenHeader, SecondaryButton, Spinner } from '../components/ui'
-
-const CATEGORY_ICON = { 肉: '🥩', 魚: '🐟', 野菜: '🥦', ご飯: '🍚', 麺: '🍜', 圧力鍋: '🍲', その他: '🍽️' }
+import { CategoryIcon } from '../lib/categoryIcons'
 
 export default function MenuDetailScreen({ menuId, onBack, onEdit }) {
   const { family, displayName } = useFamily()
@@ -63,7 +62,7 @@ export default function MenuDetailScreen({ menuId, onBack, onEdit }) {
       />
       <div className="flex flex-col gap-3 px-4 pt-3 pb-8">
         <div className="flex items-center gap-2">
-          <span className="text-2xl">{CATEGORY_ICON[menu.category] || '🍽️'}</span>
+          <CategoryIcon category={menu.category} className="h-9 w-9" />
           <span className="rounded-full bg-orange-100 px-3 py-0.5 text-xs font-bold text-orange-600">{menu.category}</span>
           <span className="text-xs text-stone-400">{people}人分で表示中</span>
         </div>
