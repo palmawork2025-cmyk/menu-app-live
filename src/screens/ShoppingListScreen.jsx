@@ -13,13 +13,35 @@ export default function ShoppingListScreen({ onOpenMenu }) {
   const { family, displayName } = useFamily()
   const { menus } = useMenus(family.id)
   const { ingredients } = useIngredients(family.id)
-  const { items, loading, toggleChecked, deleteItem, clearChecked, addManualItem, addFromMenuLines } = useShoppingList(family.id)
+  const { items, loading, toggleChecked, deleteItem, deleteItems, clearChecked, addManualItem, addFromMenuLines } = useShoppingList(family.id)
 
   const [busyScope, setBusyScope] = useState(null)
   const [showManual, setShowManual] = useState(false)
   const [showStaples, setShowStaples] = useState(false)
   const [expanded, setExpanded] = useState(null)
   const [notice, setNotice] = useState('')
+  const [selectMode, setSelectMode] = useState(false)
+  const [selectedIds, setSelectedIds] = useState(() => new Set())
+
+  function toggleSelectMode() {
+    setSelectMode((v) => !v)
+    setSelectedIds(new Set())
+  }
+
+  function toggleSelected(id) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  async function deleteSelected() {
+    await deleteItems(Array.from(selectedIds))
+    setSelectedIds(new Set())
+    setSelectMode(false)
+  }
 
   const unchecked = sortByGroceryOrder(items.filter((i) => !i.is_checked))
   const checked = items.filter((i) => i.is_checked)
@@ -88,7 +110,14 @@ export default function ShoppingListScreen({ onOpenMenu }) {
 
   return (
     <div className="flex flex-col gap-3 px-4 pb-10 pt-[calc(env(safe-area-inset-top)+1rem)]">
-      <h1 className="text-lg font-black text-stone-800">買い物リスト</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-lg font-black text-stone-800">買い物リスト</h1>
+        {items.length > 0 && (
+          <GhostButton onClick={toggleSelectMode} className={selectMode ? 'bg-stone-200' : 'bg-white shadow-sm'}>
+            {selectMode ? 'キャンセル' : '選択して削除'}
+          </GhostButton>
+        )}
+      </div>
 
       <div className="grid grid-cols-2 gap-2">
         <SecondaryButton onClick={() => addFromScope('today')} disabled={busyScope !== null}>
@@ -128,6 +157,9 @@ export default function ShoppingListScreen({ onOpenMenu }) {
                   onExpand={() => setExpanded(expanded === item.id ? null : item.id)}
                   onOpenMenu={onOpenMenu}
                   menus={menus}
+                  selectMode={selectMode}
+                  selected={selectedIds.has(item.id)}
+                  onToggleSelect={() => toggleSelected(item.id)}
                 />
               ))
             )}
@@ -149,10 +181,28 @@ export default function ShoppingListScreen({ onOpenMenu }) {
                   onExpand={() => setExpanded(expanded === item.id ? null : item.id)}
                   onOpenMenu={onOpenMenu}
                   menus={menus}
+                  selectMode={selectMode}
+                  selected={selectedIds.has(item.id)}
+                  onToggleSelect={() => toggleSelected(item.id)}
                 />
               ))}
             </Card>
           )}
+        </div>
+      )}
+
+      {selectMode && (
+        <div className="fixed inset-x-0 bottom-16 z-20 mx-auto flex max-w-md justify-center px-4 pb-[env(safe-area-inset-bottom)]">
+          <div className="flex w-full items-center justify-between gap-2 rounded-2xl bg-stone-800 px-4 py-3 shadow-lg">
+            <span className="text-sm font-bold text-white">{selectedIds.size}件選択中</span>
+            <button
+              onClick={deleteSelected}
+              disabled={selectedIds.size === 0}
+              className="rounded-xl bg-red-500 px-4 py-2 text-sm font-bold text-white disabled:opacity-40"
+            >
+              削除する
+            </button>
+          </div>
         </div>
       )}
 
@@ -181,21 +231,33 @@ export default function ShoppingListScreen({ onOpenMenu }) {
   )
 }
 
-function ShoppingRow({ item, onToggle, onDelete, expanded, onExpand, onOpenMenu, menus }) {
+function ShoppingRow({ item, onToggle, onDelete, expanded, onExpand, onOpenMenu, menus, selectMode = false, selected = false, onToggleSelect }) {
   const hasSource = item.source === 'menu' && (item.source_menu_names || []).length > 0
   return (
     <div className="p-3">
       <div className="flex items-center gap-3">
-        <button
-          onClick={onToggle}
-          className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 text-sm font-bold ${
-            item.is_checked ? 'border-orange-400 bg-orange-400 text-white' : 'border-stone-300 text-transparent'
-          }`}
-          aria-label="購入済みにする"
-        >
-          ✓
-        </button>
-        <button className="min-w-0 flex-1 text-left" onClick={hasSource ? onExpand : undefined}>
+        {selectMode ? (
+          <button
+            onClick={onToggleSelect}
+            className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border-2 text-sm font-bold ${
+              selected ? 'border-orange-400 bg-orange-400 text-white' : 'border-stone-300 text-transparent'
+            }`}
+            aria-label="選択する"
+          >
+            ✓
+          </button>
+        ) : (
+          <button
+            onClick={onToggle}
+            className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 text-sm font-bold ${
+              item.is_checked ? 'border-orange-400 bg-orange-400 text-white' : 'border-stone-300 text-transparent'
+            }`}
+            aria-label="購入済みにする"
+          >
+            ✓
+          </button>
+        )}
+        <button className="min-w-0 flex-1 text-left" onClick={selectMode ? onToggleSelect : (hasSource ? onExpand : undefined)}>
           <p className={`truncate font-bold text-stone-700 ${item.is_checked ? 'item-checked' : ''}`}>
             {item.name}
             {item.source === 'staple' && <span className="ml-1 text-[10px] font-normal text-stone-300">常備品</span>}
@@ -204,7 +266,9 @@ function ShoppingRow({ item, onToggle, onDelete, expanded, onExpand, onOpenMenu,
         <span className={`shrink-0 text-sm font-bold text-stone-500 ${item.is_checked ? 'item-checked' : ''}`}>
           {formatQuantityLine({ quantity: item.quantity, unit: item.unit, displayText: item.display_text })}
         </span>
-        <button onClick={onDelete} className="shrink-0 rounded-full px-1.5 text-stone-300 active:bg-stone-100" aria-label="削除">✕</button>
+        {!selectMode && (
+          <button onClick={onDelete} className="shrink-0 rounded-full px-1.5 text-stone-300 active:bg-stone-100" aria-label="削除">✕</button>
+        )}
       </div>
       {expanded && hasSource && (
         <div className="ml-9 mt-2 flex flex-wrap gap-1.5">
