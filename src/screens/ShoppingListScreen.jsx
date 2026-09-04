@@ -13,7 +13,7 @@ export default function ShoppingListScreen({ onOpenMenu }) {
   const { family, displayName } = useFamily()
   const { menus } = useMenus(family.id)
   const { ingredients } = useIngredients(family.id)
-  const { items, loading, toggleChecked, deleteItem, deleteItems, clearChecked, addManualItem, addFromMenuLines } = useShoppingList(family.id)
+  const { items, loading, toggleChecked, updateItem, deleteItem, deleteItems, clearChecked, addManualItem, addFromMenuLines } = useShoppingList(family.id)
 
   const [busyScope, setBusyScope] = useState(null)
   const [showManual, setShowManual] = useState(false)
@@ -22,6 +22,7 @@ export default function ShoppingListScreen({ onOpenMenu }) {
   const [notice, setNotice] = useState('')
   const [selectMode, setSelectMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState(() => new Set())
+  const [editingItem, setEditingItem] = useState(null)
 
   function toggleSelectMode() {
     setSelectMode((v) => !v)
@@ -153,6 +154,7 @@ export default function ShoppingListScreen({ onOpenMenu }) {
                   item={item}
                   onToggle={() => toggleChecked(item.id, true)}
                   onDelete={() => deleteItem(item.id)}
+                  onEditQuantity={() => setEditingItem(item)}
                   expanded={expanded === item.id}
                   onExpand={() => setExpanded(expanded === item.id ? null : item.id)}
                   onOpenMenu={onOpenMenu}
@@ -177,6 +179,7 @@ export default function ShoppingListScreen({ onOpenMenu }) {
                   item={item}
                   onToggle={() => toggleChecked(item.id, false)}
                   onDelete={() => deleteItem(item.id)}
+                  onEditQuantity={() => setEditingItem(item)}
                   expanded={expanded === item.id}
                   onExpand={() => setExpanded(expanded === item.id ? null : item.id)}
                   onOpenMenu={onOpenMenu}
@@ -227,11 +230,22 @@ export default function ShoppingListScreen({ onOpenMenu }) {
           }}
         />
       )}
+
+      {editingItem && (
+        <EditQuantityModal
+          item={editingItem}
+          onClose={() => setEditingItem(null)}
+          onSave={async (patch) => {
+            await updateItem(editingItem.id, patch)
+            setEditingItem(null)
+          }}
+        />
+      )}
     </div>
   )
 }
 
-function ShoppingRow({ item, onToggle, onDelete, expanded, onExpand, onOpenMenu, menus, selectMode = false, selected = false, onToggleSelect }) {
+function ShoppingRow({ item, onToggle, onDelete, onEditQuantity, expanded, onExpand, onOpenMenu, menus, selectMode = false, selected = false, onToggleSelect }) {
   const hasSource = item.source === 'menu' && (item.source_menu_names || []).length > 0
   return (
     <div className="p-3">
@@ -263,9 +277,12 @@ function ShoppingRow({ item, onToggle, onDelete, expanded, onExpand, onOpenMenu,
             {item.source === 'staple' && <span className="ml-1 text-[10px] font-normal text-stone-300">常備品</span>}
           </p>
         </button>
-        <span className={`shrink-0 text-sm font-bold text-stone-500 ${item.is_checked ? 'item-checked' : ''}`}>
-          {formatQuantityLine({ quantity: item.quantity, unit: item.unit, displayText: item.display_text })}
-        </span>
+        <button
+          onClick={selectMode ? onToggleSelect : onEditQuantity}
+          className={`shrink-0 rounded-lg px-1.5 py-0.5 text-sm font-bold text-stone-500 active:bg-stone-100 ${item.is_checked ? 'item-checked' : ''}`}
+        >
+          {formatQuantityLine({ quantity: item.quantity, unit: item.unit, displayText: item.display_text }) || '数量を設定'}
+        </button>
         {!selectMode && (
           <button onClick={onDelete} className="shrink-0 rounded-full px-1.5 text-stone-300 active:bg-stone-100" aria-label="削除">✕</button>
         )}
@@ -358,6 +375,43 @@ function ManualAddModal({ ingredients, onClose, onAdd }) {
           })}
         >
           追加する
+        </PrimaryButton>
+      </div>
+    </Modal>
+  )
+}
+
+function EditQuantityModal({ item, onClose, onSave }) {
+  const initialNotScalable = item.quantity === null || item.quantity === undefined
+  const [quantity, setQuantity] = useState(initialNotScalable ? '' : String(item.quantity))
+  const [unit, setUnit] = useState(item.unit || '')
+  const [notScalable, setNotScalable] = useState(initialNotScalable)
+  const [displayText, setDisplayText] = useState(item.display_text || '')
+
+  return (
+    <Modal title="数量を編集" onClose={onClose}>
+      <div className="space-y-2">
+        <p className="font-bold text-stone-700">{item.name}</p>
+        {notScalable ? (
+          <TextInput placeholder="例：半分、あまり、適量" value={displayText} onChange={(e) => setDisplayText(e.target.value)} autoFocus />
+        ) : (
+          <div className="flex gap-1.5">
+            <TextInput type="number" step="any" placeholder="数量" value={quantity} onChange={(e) => setQuantity(e.target.value)} className="w-24" autoFocus />
+            <TextInput placeholder="単位" value={unit} onChange={(e) => setUnit(e.target.value)} className="flex-1" />
+          </div>
+        )}
+        <label className="flex items-center gap-1.5 text-xs text-stone-400">
+          <input type="checkbox" checked={notScalable} onChange={(e) => setNotScalable(e.target.checked)} />
+          数量ではなくメモで残す（半分使った、あまり、など）
+        </label>
+        <PrimaryButton
+          onClick={() => onSave({
+            unit: notScalable ? '' : unit.trim(),
+            quantity: notScalable || quantity === '' ? null : Number(quantity),
+            display_text: notScalable ? (displayText.trim() || null) : null,
+          })}
+        >
+          保存する
         </PrimaryButton>
       </div>
     </Modal>

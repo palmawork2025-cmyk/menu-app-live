@@ -39,6 +39,15 @@ export function useShoppingList(familyId) {
     await reload()
   }, [reload])
 
+  const updateItem = useCallback(async (id, patch) => {
+    const { error } = await supabase
+      .from('shopping_list_items')
+      .update({ ...patch, updated_at: new Date().toISOString() })
+      .eq('id', id)
+    if (error) throw error
+    await reload()
+  }, [reload])
+
   const deleteItem = useCallback(async (id) => {
     const { error } = await supabase.from('shopping_list_items').delete().eq('id', id)
     if (error) throw error
@@ -121,5 +130,5 @@ export function useShoppingList(familyId) {
     await reload()
   }, [familyId, reload])
 
-  return { items, loading, toggleChecked, deleteItem, deleteItems, clearChecked, addManualItem, addFromMenuLines, reload }
+  return { items, loading, toggleChecked, updateItem, deleteItem, deleteItems, clearChecked, addManualItem, addFromMenuLines, reload }
 }
