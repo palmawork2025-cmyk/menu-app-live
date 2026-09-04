@@ -19,7 +19,7 @@ export default function MenuListScreen({ onOpenMenu, onNewMenu, onOpenStaples })
   })
 
   return (
-    <div className="flex flex-col gap-3 px-4 pt-4">
+    <div className="flex flex-col gap-3 px-4 pt-[calc(env(safe-area-inset-top)+1rem)]">
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-black text-stone-800">メニュー一覧</h1>
         <GhostButton onClick={onOpenStaples} className="bg-white shadow-sm">🧂 常備品</GhostButton>

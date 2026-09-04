@@ -5,7 +5,8 @@ import { useIngredients } from '../hooks/useIngredients'
 import { useShoppingList } from '../hooks/useShoppingList'
 import { supabase } from '../lib/supabaseClient'
 import { scaleQuantity, mergeIngredientLines, formatQuantityLine } from '../lib/quantity'
-import { todayISO, getWeekStart, getWeekDates } from '../lib/dates'
+import { todayISO, getWeekStart, getWeekDates, addDays } from '../lib/dates'
+import { sortByGroceryOrder } from '../lib/groceryOrder'
 import { Card, EmptyState, GhostButton, Modal, PrimaryButton, SecondaryButton, Spinner, TextInput } from '../components/ui'
 
 export default function ShoppingListScreen({ onOpenMenu }) {
@@ -20,15 +21,25 @@ export default function ShoppingListScreen({ onOpenMenu }) {
   const [expanded, setExpanded] = useState(null)
   const [notice, setNotice] = useState('')
 
-  const unchecked = items.filter((i) => !i.is_checked)
+  const unchecked = sortByGroceryOrder(items.filter((i) => !i.is_checked))
   const checked = items.filter((i) => i.is_checked)
 
   async function addFromScope(scope) {
     setBusyScope(scope)
     setNotice('')
     try {
-      const start = scope === 'today' ? todayISO() : getWeekDates(getWeekStart())[0]
-      const end = scope === 'today' ? todayISO() : getWeekDates(getWeekStart())[6]
+      let start, end
+      if (scope === 'today') {
+        start = end = todayISO()
+      } else if (scope === 'nextWeek') {
+        const nextWeekDates = getWeekDates(addDays(getWeekStart(), 7))
+        start = nextWeekDates[0]
+        end = nextWeekDates[6]
+      } else {
+        const weekDates = getWeekDates(getWeekStart())
+        start = weekDates[0]
+        end = weekDates[6]
+      }
       const { data, error } = await supabase
         .from('meal_plan_entries')
         .select('menu_id')
@@ -38,7 +49,8 @@ export default function ShoppingListScreen({ onOpenMenu }) {
       if (error) throw error
 
       if (!data.length) {
-        setNotice(scope === 'today' ? '今日の献立がまだ登録されていません' : '今週の献立がまだ登録されていません')
+        const label = scope === 'today' ? '今日' : scope === 'nextWeek' ? '来週' : '今週'
+        setNotice(`${label}の献立がまだ登録されていません`)
         return
       }
 
@@ -63,7 +75,8 @@ export default function ShoppingListScreen({ onOpenMenu }) {
         return
       }
       await addFromMenuLines(merged, displayName)
-      setNotice(scope === 'today' ? '今日の献立から追加しました' : '今週の献立から追加しました')
+      const doneLabel = scope === 'today' ? '今日' : scope === 'nextWeek' ? '来週' : '今週'
+      setNotice(`${doneLabel}の献立から追加しました`)
     } catch (err) {
       console.error(err)
       setNotice('追加に失敗しました')
@@ -74,7 +87,7 @@ export default function ShoppingListScreen({ onOpenMenu }) {
   }
 
   return (
-    <div className="flex flex-col gap-3 px-4 pt-4 pb-10">
+    <div className="flex flex-col gap-3 px-4 pb-10 pt-[calc(env(safe-area-inset-top)+1rem)]">
       <h1 className="text-lg font-black text-stone-800">買い物リスト</h1>
 
       <div className="grid grid-cols-2 gap-2">
@@ -83,6 +96,9 @@ export default function ShoppingListScreen({ onOpenMenu }) {
         </SecondaryButton>
         <SecondaryButton onClick={() => addFromScope('week')} disabled={busyScope !== null}>
           {busyScope === 'week' ? '追加中…' : '今週の献立から'}
+        </SecondaryButton>
+        <SecondaryButton className="col-span-2" onClick={() => addFromScope('nextWeek')} disabled={busyScope !== null}>
+          {busyScope === 'nextWeek' ? '追加中…' : '来週の献立から'}
         </SecondaryButton>
       </div>
       {notice && <p className="text-center text-xs font-bold text-orange-500">{notice}</p>}
@@ -142,6 +158,7 @@ export default function ShoppingListScreen({ onOpenMenu }) {
 
       {showManual && (
         <ManualAddModal
+          ingredients={ingredients}
           onClose={() => setShowManual(false)}
           onAdd={async (payload) => {
             await addManualItem({ ...payload, addedBy: displayName })
@@ -210,16 +227,53 @@ function ShoppingRow({ item, onToggle, onDelete, expanded, onExpand, onOpenMenu,
   )
 }
 
-function ManualAddModal({ onClose, onAdd }) {
+function ManualAddModal({ ingredients, onClose, onAdd }) {
   const [name, setName] = useState('')
   const [quantity, setQuantity] = useState('')
   const [unit, setUnit] = useState('')
   const [notScalable, setNotScalable] = useState(false)
+  const [showSuggestions, setShowSuggestions] = useState(false)
+
+  const suggestions = name.trim().length
+    ? ingredients
+        .filter((i) => i.name.toLowerCase().includes(name.trim().toLowerCase()))
+        .slice(0, 6)
+    : []
+
+  function pickSuggestion(ing) {
+    setName(ing.name)
+    if (ing.default_unit) setUnit(ing.default_unit)
+    setShowSuggestions(false)
+  }
 
   return (
     <Modal title="食材を追加" onClose={onClose}>
       <div className="space-y-2">
-        <TextInput placeholder="食材名（例：牛乳）" value={name} onChange={(e) => setName(e.target.value)} autoFocus />
+        <div className="relative">
+          <TextInput
+            placeholder="食材名（例：牛乳）"
+            value={name}
+            onChange={(e) => { setName(e.target.value); setShowSuggestions(true) }}
+            onFocus={() => setShowSuggestions(true)}
+            autoFocus
+          />
+          {showSuggestions && suggestions.length > 0 && (
+            <ul className="absolute z-10 mt-1 w-full overflow-hidden rounded-xl border border-stone-100 bg-white shadow-lg">
+              {suggestions.map((ing) => (
+                <li key={ing.id}>
+                  <button
+                    type="button"
+                    onClick={() => pickSuggestion(ing)}
+                    className="flex w-full items-center justify-between px-3 py-2.5 text-left text-sm font-bold text-stone-700 active:bg-orange-50"
+                  >
+                    <span>{ing.name}</span>
+                    {ing.is_staple && <span className="text-[10px] font-normal text-stone-300">常備品</span>}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
         {!notScalable && (
           <div className="flex gap-1.5">
             <TextInput type="number" step="any" placeholder="数量" value={quantity} onChange={(e) => setQuantity(e.target.value)} className="w-24" />

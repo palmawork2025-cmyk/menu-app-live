@@ -72,7 +72,7 @@ export function Chip({ active, children, className = '', ...props }) {
 
 export function ScreenHeader({ title, onBack, right = null }) {
   return (
-    <div className="sticky top-0 z-10 flex items-center gap-2 border-b border-stone-100 bg-orange-50/90 px-4 py-3 backdrop-blur">
+    <div className="sticky top-0 z-10 flex items-center gap-2 border-b border-stone-100 bg-orange-50/90 px-4 pb-3 pt-[calc(env(safe-area-inset-top)+0.75rem)] backdrop-blur">
       {onBack && (
         <button onClick={onBack} className="-ml-1 rounded-full p-1.5 text-xl text-stone-500 active:bg-stone-100" aria-label="戻る">
           ←

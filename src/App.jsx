@@ -65,7 +65,14 @@ function MainApp() {
   } else {
     switch (activeTab) {
       case 'home':
-        body = <HomeScreen onOpenSettings={() => push({ type: 'settings' })} onGoShopping={() => changeTab('shopping')} onGoPlan={() => changeTab('plan')} />
+        body = (
+          <HomeScreen
+            onOpenSettings={() => push({ type: 'settings' })}
+            onGoShopping={() => changeTab('shopping')}
+            onGoPlan={() => changeTab('plan')}
+            onOpenMenu={(id) => push({ type: 'menuDetail', menuId: id })}
+          />
+        )
         break
       case 'plan':
         body = <PlanScreen onOpenMenu={(id) => push({ type: 'menuDetail', menuId: id })} />

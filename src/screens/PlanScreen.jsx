@@ -18,7 +18,7 @@ export default function PlanScreen({ onOpenMenu }) {
   const weekLabel = `${formatDateLabel(weekDates[0])} 〜 ${formatDateLabel(weekDates[6])}`
 
   return (
-    <div className="flex flex-col gap-3 px-4 pt-4">
+    <div className="flex flex-col gap-3 px-4 pt-[calc(env(safe-area-inset-top)+1rem)]">
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-black text-stone-800">献立（1週間）</h1>
         <Stepper value={family.people_count} onChange={updatePeopleCount} />
