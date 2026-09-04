@@ -97,7 +97,14 @@ export function useMenus(familyId) {
     await reload()
   }, [reload])
 
-  return { menus, loading, saveMenu, deleteMenu, reload }
+  const deleteMenus = useCallback(async (menuIds) => {
+    if (!menuIds.length) return
+    const { error } = await supabase.from('menus').delete().in('id', menuIds)
+    if (error) throw error
+    await reload()
+  }, [reload])
+
+  return { menus, loading, saveMenu, deleteMenu, deleteMenus, reload }
 }
 
 async function resolveIngredientId(familyId, name, unit) {
