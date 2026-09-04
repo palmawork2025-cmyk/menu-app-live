@@ -1,0 +1,36 @@
+@import "tailwindcss";
+
+:root {
+  color-scheme: light;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  background: #fff7ed;
+  font-family: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", system-ui, sans-serif;
+  overscroll-behavior-y: contain;
+}
+
+/* Comfortable tap targets, no accidental text selection while tapping around */
+button, [role="button"] {
+  touch-action: manipulation;
+}
+
+/* checked shopping-list item strike-through, defined once, used across screens */
+.item-checked {
+  text-decoration: line-through;
+  color: #a8a29e;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-thumb {
+  background: #fdba74;
+  border-radius: 999px;
+}
