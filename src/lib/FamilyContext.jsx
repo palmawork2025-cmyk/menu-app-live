@@ -126,6 +126,18 @@ export function FamilyProvider({ children }) {
     if (err) throw err
   }, [family])
 
+  const updateFamilyName = useCallback(async (name) => {
+    if (!family) return
+    const trimmed = name.trim()
+    if (!trimmed) return
+    setFamily((f) => (f ? { ...f, name: trimmed } : f))
+    const { error: err } = await supabase
+      .from('families')
+      .update({ name: trimmed })
+      .eq('id', family.id)
+    if (err) throw err
+  }, [family])
+
   const value = useMemo(() => ({
     status,
     error,
@@ -136,7 +148,8 @@ export function FamilyProvider({ children }) {
     joinFamily,
     leaveFamily,
     updatePeopleCount,
-  }), [status, error, userId, family, displayName, createFamily, joinFamily, leaveFamily, updatePeopleCount])
+    updateFamilyName,
+  }), [status, error, userId, family, displayName, createFamily, joinFamily, leaveFamily, updatePeopleCount, updateFamilyName])
 
   return <FamilyContext.Provider value={value}>{children}</FamilyContext.Provider>
 }

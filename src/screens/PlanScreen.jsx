@@ -4,8 +4,7 @@ import { useMealPlan } from '../hooks/useMealPlan'
 import { useMenus } from '../hooks/useMenus'
 import { getWeekStart, getWeekDates, addDays, formatDateLabel, isToday } from '../lib/dates'
 import { Card, Chip, EmptyState, GhostButton, Modal, Spinner, Stepper, TextInput } from '../components/ui'
-
-const CATEGORIES = ['すべて', '肉', '魚', '野菜', 'ご飯', '麺', '圧力鍋', 'その他']
+import { getAllCategories } from '../lib/categories'
 
 export default function PlanScreen({ onOpenMenu }) {
   const { family, updatePeopleCount } = useFamily()
@@ -81,6 +80,7 @@ export default function PlanScreen({ onOpenMenu }) {
 function MenuPicker({ menus, onPick, onClose, dateLabel }) {
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState('すべて')
+  const CATEGORIES = ['すべて', ...getAllCategories(menus)]
 
   const filtered = menus.filter((m) => {
     const matchesCategory = category === 'すべて' || m.category === category

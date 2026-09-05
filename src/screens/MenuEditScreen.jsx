@@ -1,9 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useFamily } from '../lib/FamilyContext'
 import { useMenus } from '../hooks/useMenus'
+import { getAllCategories } from '../lib/categories'
 import { Card, Chip, GhostButton, PrimaryButton, ScreenHeader, SecondaryButton, TextInput, Textarea } from '../components/ui'
-
-const CATEGORIES = ['肉', '魚', '野菜', 'ご飯', '麺', '圧力鍋', 'その他']
 
 function emptyIngredient() {
   return { key: crypto.randomUUID(), name: '', quantity: '', unit: '', notScalable: false, displayText: '' }
@@ -20,6 +19,13 @@ export default function MenuEditScreen({ menuId, onBack, onDone }) {
   const [steps, setSteps] = useState([''])
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [addingCategory, setAddingCategory] = useState(false)
+  const [newCategoryName, setNewCategoryName] = useState('')
+
+  const knownCategories = getAllCategories(menus)
+  const categories = knownCategories.includes(category)
+    ? knownCategories
+    : [...knownCategories.filter((c) => c !== 'その他'), category, 'その他']
 
   useEffect(() => {
     if (existing) {
@@ -108,10 +114,34 @@ export default function MenuEditScreen({ menuId, onBack, onDone }) {
           <div>
             <p className="mb-1 text-sm font-bold text-stone-600">カテゴリー</p>
             <div className="flex flex-wrap gap-1.5">
-              {CATEGORIES.map((c) => (
+              {categories.map((c) => (
                 <Chip key={c} active={category === c} onClick={() => setCategory(c)}>{c}</Chip>
               ))}
+              <Chip active={false} onClick={() => setAddingCategory(true)}>＋ 新しいカテゴリー</Chip>
             </div>
+            {addingCategory && (
+              <div className="mt-2 flex gap-1.5">
+                <TextInput
+                  placeholder="例）お弁当"
+                  value={newCategoryName}
+                  onChange={(e) => setNewCategoryName(e.target.value)}
+                  maxLength={10}
+                  autoFocus
+                  className="flex-1"
+                />
+                <GhostButton
+                  className="bg-orange-100 text-orange-600"
+                  onClick={() => {
+                    const trimmed = newCategoryName.trim()
+                    if (trimmed) setCategory(trimmed)
+                    setNewCategoryName('')
+                    setAddingCategory(false)
+                  }}
+                >
+                  追加
+                </GhostButton>
+              </div>
+            )}
           </div>
           <p className="text-xs text-stone-400">材料・分量は{existing?.base_people || 2}人分を基準に登録してください（人数変更時は自動計算されます）</p>
         </Card>

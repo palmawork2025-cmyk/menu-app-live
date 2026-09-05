@@ -1,10 +1,13 @@
 import { useState } from 'react'
 import { useFamily } from '../lib/FamilyContext'
-import { Card, GhostButton, ScreenHeader, SecondaryButton, Stepper } from '../components/ui'
+import { Card, GhostButton, PrimaryButton, ScreenHeader, SecondaryButton, Stepper, TextInput } from '../components/ui'
 
 export default function SettingsScreen({ onBack }) {
-  const { family, displayName, updatePeopleCount, leaveFamily } = useFamily()
+  const { family, displayName, updatePeopleCount, updateFamilyName, leaveFamily } = useFamily()
   const [copied, setCopied] = useState(false)
+  const [editingName, setEditingName] = useState(false)
+  const [nameDraft, setNameDraft] = useState(family.name)
+  const [savingName, setSavingName] = useState(false)
 
   async function handleCopy() {
     try {
@@ -16,13 +19,36 @@ export default function SettingsScreen({ onBack }) {
     }
   }
 
+  async function handleSaveName() {
+    setSavingName(true)
+    try {
+      await updateFamilyName(nameDraft)
+      setEditingName(false)
+    } finally {
+      setSavingName(false)
+    }
+  }
+
   return (
     <div>
       <ScreenHeader title="設定" onBack={onBack} />
       <div className="flex flex-col gap-3 px-4 pt-3 pb-10">
-        <Card className="space-y-1">
+        <Card className="space-y-2">
           <p className="text-xs font-bold text-stone-400">家族ルーム</p>
-          <p className="text-lg font-black text-stone-800">{family.name}</p>
+          {editingName ? (
+            <div className="space-y-2">
+              <TextInput value={nameDraft} onChange={(e) => setNameDraft(e.target.value)} maxLength={30} autoFocus />
+              <div className="grid grid-cols-2 gap-2">
+                <SecondaryButton onClick={() => { setEditingName(false); setNameDraft(family.name) }}>キャンセル</SecondaryButton>
+                <PrimaryButton onClick={handleSaveName} disabled={savingName || !nameDraft.trim()}>{savingName ? '保存中…' : '保存する'}</PrimaryButton>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between">
+              <p className="text-lg font-black text-stone-800">{family.name}</p>
+              <GhostButton onClick={() => setEditingName(true)}>編集</GhostButton>
+            </div>
+          )}
         </Card>
 
         <Card className="space-y-2">

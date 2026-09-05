@@ -3,8 +3,7 @@ import { useFamily } from '../lib/FamilyContext'
 import { useMenus } from '../hooks/useMenus'
 import { Chip, EmptyState, GhostButton, Spinner, TextInput } from '../components/ui'
 import { CategoryIcon } from '../lib/categoryIcons'
-
-const CATEGORIES = ['すべて', '肉', '魚', '野菜', 'ご飯', '麺', '圧力鍋', 'その他']
+import { getAllCategories } from '../lib/categories'
 
 export default function MenuListScreen({ onOpenMenu, onNewMenu, onOpenStaples }) {
   const { family } = useFamily()
@@ -13,6 +12,7 @@ export default function MenuListScreen({ onOpenMenu, onNewMenu, onOpenStaples })
   const [category, setCategory] = useState('すべて')
   const [selectMode, setSelectMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState(() => new Set())
+  const CATEGORIES = ['すべて', ...getAllCategories(menus)]
 
   const filtered = menus.filter((m) => {
     const matchesCategory = category === 'すべて' || m.category === category
