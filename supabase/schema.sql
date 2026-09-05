@@ -112,9 +112,15 @@ create table if not exists shopping_list_items (
   source text not null default 'manual', -- 'menu' | 'manual' | 'staple'
   source_menu_names text[] not null default '{}',
   added_by text,
+  -- Manual drag-to-reorder position. NULL means "not manually placed yet" --
+  -- those items fall back to the automatic supermarket-aisle-order sort.
+  sort_order int,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+-- Migration for existing projects created before sort_order existed:
+-- alter table shopping_list_items add column if not exists sort_order int;
 
 -- ============================================================================
 -- Row Level Security

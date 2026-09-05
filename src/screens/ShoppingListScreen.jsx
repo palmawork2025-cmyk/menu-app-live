@@ -6,15 +6,16 @@ import { useShoppingList } from '../hooks/useShoppingList'
 import { supabase } from '../lib/supabaseClient'
 import { scaleQuantity, mergeIngredientLines, formatQuantityLine } from '../lib/quantity'
 import { todayISO, getWeekStart, getWeekDates, addDays } from '../lib/dates'
-import { sortByGroceryOrder } from '../lib/groceryOrder'
+import { sortForDisplay } from '../lib/groceryOrder'
 import { UnitPicker } from '../lib/units'
+import { useDragReorder } from '../hooks/useDragReorder'
 import { Card, EmptyState, GhostButton, Modal, PrimaryButton, SecondaryButton, Spinner, TextInput } from '../components/ui'
 
 export default function ShoppingListScreen({ onOpenMenu }) {
   const { family, displayName } = useFamily()
   const { menus } = useMenus(family.id)
   const { ingredients } = useIngredients(family.id)
-  const { items, loading, toggleChecked, updateItem, deleteItem, deleteItems, clearChecked, clearAll, addManualItem, addFromMenuLines } = useShoppingList(family.id)
+  const { items, loading, toggleChecked, updateItem, deleteItem, deleteItems, clearChecked, clearAll, reorderItems, addManualItem, addFromMenuLines } = useShoppingList(family.id)
 
   const [busyScope, setBusyScope] = useState(null)
   const [showManual, setShowManual] = useState(false)
@@ -51,8 +52,23 @@ export default function ShoppingListScreen({ onOpenMenu }) {
     setSelectMode(false)
   }
 
-  const unchecked = sortByGroceryOrder(items.filter((i) => !i.is_checked))
+  const uncheckedSorted = sortForDisplay(items.filter((i) => !i.is_checked))
   const checked = items.filter((i) => i.is_checked)
+  const uncheckedById = new Map(uncheckedSorted.map((i) => [i.id, i]))
+  const { order: uncheckedOrder, overlay: dragOverlay, setRowRef, dragHandleProps } = useDragReorder(
+    uncheckedSorted.map((i) => i.id),
+    async (ids) => {
+      try {
+        await reorderItems(ids)
+      } catch (err) {
+        console.error(err)
+        setNotice('並び替えの保存に失敗しました')
+        setTimeout(() => setNotice(''), 3000)
+      }
+    }
+  )
+  const unchecked = uncheckedOrder.map((id) => uncheckedById.get(id)).filter(Boolean)
+  const draggedItem = dragOverlay ? uncheckedById.get(dragOverlay.id) : null
 
   async function addFromScope(scope) {
     setBusyScope(scope)
@@ -175,6 +191,7 @@ export default function ShoppingListScreen({ onOpenMenu }) {
               unchecked.map((item) => (
                 <ShoppingRow
                   key={item.id}
+                  rowRef={(el) => setRowRef(item.id, el)}
                   item={item}
                   onToggle={() => toggleChecked(item.id, true)}
                   onDelete={() => deleteItem(item.id)}
@@ -186,6 +203,9 @@ export default function ShoppingListScreen({ onOpenMenu }) {
                   selectMode={selectMode}
                   selected={selectedIds.has(item.id)}
                   onToggleSelect={() => toggleSelected(item.id)}
+                  draggable={!selectMode}
+                  dragHandleProps={selectMode ? null : dragHandleProps(item.id)}
+                  isDragging={dragOverlay?.id === item.id}
                 />
               ))
             )}
@@ -215,6 +235,37 @@ export default function ShoppingListScreen({ onOpenMenu }) {
               ))}
             </Card>
           )}
+        </div>
+      )}
+
+      {dragOverlay && draggedItem && (
+        <div
+          style={{
+            position: 'fixed',
+            left: dragOverlay.x,
+            top: dragOverlay.y,
+            width: dragOverlay.width,
+            height: dragOverlay.height,
+            zIndex: 50,
+          }}
+          className="pointer-events-none rounded-2xl bg-white shadow-xl ring-2 ring-orange-300"
+        >
+          <ShoppingRow
+            item={draggedItem}
+            onToggle={() => {}}
+            onDelete={() => {}}
+            onEditQuantity={() => {}}
+            expanded={false}
+            onExpand={() => {}}
+            onOpenMenu={() => {}}
+            menus={menus}
+            selectMode={false}
+            selected={false}
+            onToggleSelect={() => {}}
+            draggable
+            dragHandleProps={null}
+            isDragging
+          />
         </div>
       )}
 
@@ -269,11 +320,25 @@ export default function ShoppingListScreen({ onOpenMenu }) {
   )
 }
 
-function ShoppingRow({ item, onToggle, onDelete, onEditQuantity, expanded, onExpand, onOpenMenu, menus, selectMode = false, selected = false, onToggleSelect }) {
+function ShoppingRow({
+  item, onToggle, onDelete, onEditQuantity, expanded, onExpand, onOpenMenu, menus,
+  selectMode = false, selected = false, onToggleSelect,
+  rowRef, draggable = false, dragHandleProps = null, isDragging = false,
+}) {
   const hasSource = item.source === 'menu' && (item.source_menu_names || []).length > 0
   return (
-    <div className="p-3">
+    <div ref={rowRef} className={`p-3 ${isDragging ? 'opacity-0' : ''}`}>
       <div className="flex items-center gap-3">
+        {draggable && (
+          <span
+            {...dragHandleProps}
+            className="shrink-0 cursor-grab px-0.5 text-lg text-stone-300 active:cursor-grabbing"
+            style={{ touchAction: 'none' }}
+            aria-label="ドラッグして並び替え"
+          >
+            ⠿
+          </span>
+        )}
         {selectMode ? (
           <button
             onClick={onToggleSelect}

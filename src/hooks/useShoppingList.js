@@ -71,6 +71,24 @@ export function useShoppingList(familyId) {
     await reload()
   }, [familyId, reload])
 
+  /**
+   * Persist a manual drag-and-drop order: `orderedIds` is the full list of
+   * unchecked item ids in their new top-to-bottom order.
+   */
+  const reorderItems = useCallback(async (orderedIds) => {
+    setItems((prev) => {
+      const rank = new Map(orderedIds.map((id, i) => [id, i]))
+      return prev.map((it) => (rank.has(it.id) ? { ...it, sort_order: rank.get(it.id) } : it))
+    })
+    const updates = orderedIds.map((id, index) =>
+      supabase.from('shopping_list_items').update({ sort_order: index }).eq('id', id)
+    )
+    const results = await Promise.all(updates)
+    const firstError = results.find((r) => r.error)?.error
+    if (firstError) throw firstError
+    await reload()
+  }, [reload])
+
   const clearAll = useCallback(async () => {
     const { error } = await supabase
       .from('shopping_list_items')
@@ -139,5 +157,5 @@ export function useShoppingList(familyId) {
     await reload()
   }, [familyId, reload])
 
-  return { items, loading, toggleChecked, updateItem, deleteItem, deleteItems, clearChecked, clearAll, addManualItem, addFromMenuLines, reload }
+  return { items, loading, toggleChecked, updateItem, deleteItem, deleteItems, clearChecked, clearAll, reorderItems, addManualItem, addFromMenuLines, reload }
 }

@@ -58,3 +58,17 @@ export function sortByGroceryOrder(items) {
     .sort((a, b) => (a.key - b.key) || (a.index - b.index))
     .map((x) => x.item)
 }
+
+/**
+ * Sort for display: items the user has manually dragged (sort_order set)
+ * keep that exact order and come first; anything never manually placed
+ * falls back to the automatic supermarket-aisle order and is appended
+ * after, so newly added items still land somewhere sensible.
+ */
+export function sortForDisplay(items) {
+  const manual = items
+    .filter((i) => i.sort_order !== null && i.sort_order !== undefined)
+    .sort((a, b) => a.sort_order - b.sort_order)
+  const rest = sortByGroceryOrder(items.filter((i) => i.sort_order === null || i.sort_order === undefined))
+  return [...manual, ...rest]
+}
