@@ -1,13 +1,27 @@
 import { useState } from 'react'
 import { useFamily } from '../lib/FamilyContext'
+import { useMenus } from '../hooks/useMenus'
+import { getOrderedCategories } from '../lib/categories'
+import { CategoryIcon } from '../lib/categoryIcons'
 import { Card, GhostButton, PrimaryButton, ScreenHeader, SecondaryButton, Stepper, TextInput } from '../components/ui'
 
 export default function SettingsScreen({ onBack }) {
-  const { family, displayName, updatePeopleCount, updateFamilyName, leaveFamily } = useFamily()
+  const { family, displayName, updatePeopleCount, updateFamilyName, updateCategoryOrder, leaveFamily } = useFamily()
+  const { menus } = useMenus(family.id)
   const [copied, setCopied] = useState(false)
   const [editingName, setEditingName] = useState(false)
   const [nameDraft, setNameDraft] = useState(family.name)
   const [savingName, setSavingName] = useState(false)
+
+  const orderedCategories = getOrderedCategories(menus, family.category_order)
+
+  async function moveCategory(index, direction) {
+    const next = [...orderedCategories]
+    const target = index + direction
+    if (target < 0 || target >= next.length) return
+    ;[next[index], next[target]] = [next[target], next[index]]
+    await updateCategoryOrder(next)
+  }
 
   async function handleCopy() {
     try {
@@ -64,6 +78,35 @@ export default function SettingsScreen({ onBack }) {
             <p className="text-sm text-stone-500">レシピの分量計算に使われます</p>
           </div>
           <Stepper value={family.people_count} onChange={updatePeopleCount} />
+        </Card>
+
+        <Card className="space-y-2">
+          <p className="text-xs font-bold text-stone-400">カテゴリーの並び順</p>
+          <p className="text-xs text-stone-400">メニュー一覧・献立の絞り込みチップの並び順を変更できます</p>
+          <ul className="divide-y divide-stone-100">
+            {orderedCategories.map((c, i) => (
+              <li key={c} className="flex items-center gap-2 py-2">
+                <CategoryIcon category={c} className="h-7 w-7" />
+                <span className="flex-1 font-bold text-stone-700">{c}</span>
+                <button
+                  onClick={() => moveCategory(i, -1)}
+                  disabled={i === 0}
+                  className="flex h-8 w-8 items-center justify-center rounded-lg bg-stone-100 text-stone-500 disabled:opacity-30"
+                  aria-label="上に移動"
+                >
+                  ▲
+                </button>
+                <button
+                  onClick={() => moveCategory(i, 1)}
+                  disabled={i === orderedCategories.length - 1}
+                  className="flex h-8 w-8 items-center justify-center rounded-lg bg-stone-100 text-stone-500 disabled:opacity-30"
+                  aria-label="下に移動"
+                >
+                  ▼
+                </button>
+              </li>
+            ))}
+          </ul>
         </Card>
 
         <Card>

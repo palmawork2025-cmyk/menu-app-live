@@ -15,18 +15,28 @@ export function FamilyProvider({ children }) {
   const [displayName, setDisplayName] = useState(() => localStorage.getItem(LOCAL_NAME_KEY) || '')
 
   const loadFamily = useCallback(async (familyId) => {
-    const { data, error: err } = await supabase
+    let { data, error: err } = await supabase
       .from('families')
-      .select('id, name, join_code, people_count')
+      .select('id, name, join_code, people_count, category_order')
       .eq('id', familyId)
       .maybeSingle()
+    if (err?.message?.includes('category_order')) {
+      // category_order column not migrated in yet on this Supabase project --
+      // fall back so older setups keep working until the migration is run.
+      ;({ data, error: err } = await supabase
+        .from('families')
+        .select('id, name, join_code, people_count')
+        .eq('id', familyId)
+        .maybeSingle())
+      if (data) data.category_order = []
+    }
     if (err || !data) {
       localStorage.removeItem(LOCAL_FAMILY_KEY)
       setFamily(null)
       setStatus('needs-family')
       return
     }
-    setFamily(data)
+    setFamily({ ...data, category_order: data.category_order || [] })
     setStatus('ready')
   }, [])
 
@@ -138,6 +148,16 @@ export function FamilyProvider({ children }) {
     if (err) throw err
   }, [family])
 
+  const updateCategoryOrder = useCallback(async (order) => {
+    if (!family) return
+    setFamily((f) => (f ? { ...f, category_order: order } : f))
+    const { error: err } = await supabase
+      .from('families')
+      .update({ category_order: order })
+      .eq('id', family.id)
+    if (err) throw err
+  }, [family])
+
   const value = useMemo(() => ({
     status,
     error,
@@ -149,7 +169,8 @@ export function FamilyProvider({ children }) {
     leaveFamily,
     updatePeopleCount,
     updateFamilyName,
-  }), [status, error, userId, family, displayName, createFamily, joinFamily, leaveFamily, updatePeopleCount, updateFamilyName])
+    updateCategoryOrder,
+  }), [status, error, userId, family, displayName, createFamily, joinFamily, leaveFamily, updatePeopleCount, updateFamilyName, updateCategoryOrder])
 
   return <FamilyContext.Provider value={value}>{children}</FamilyContext.Provider>
 }

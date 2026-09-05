@@ -34,8 +34,12 @@ export default function StaplesScreen({ onBack }) {
         <Card className="space-y-2">
           <h2 className="font-bold text-stone-700">常備品を追加</h2>
           <div className="flex gap-1.5">
-            <TextInput placeholder="食材名（例：醤油）" value={name} onChange={(e) => setName(e.target.value)} className="flex-1" />
-            <TextInput placeholder="単位" value={unit} onChange={(e) => setUnit(e.target.value)} className="w-24" />
+            <div className="min-w-0 flex-1">
+              <TextInput placeholder="食材名（例：醤油）" value={name} onChange={(e) => setName(e.target.value)} />
+            </div>
+            <div className="w-20 shrink-0">
+              <TextInput placeholder="単位" value={unit} onChange={(e) => setUnit(e.target.value)} />
+            </div>
           </div>
           <PrimaryButton onClick={handleAdd} disabled={adding || !name.trim()}>追加する</PrimaryButton>
         </Card>

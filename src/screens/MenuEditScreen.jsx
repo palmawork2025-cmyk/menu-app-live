@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useFamily } from '../lib/FamilyContext'
 import { useMenus } from '../hooks/useMenus'
-import { getAllCategories } from '../lib/categories'
+import { getOrderedCategories } from '../lib/categories'
 import { Card, Chip, GhostButton, PrimaryButton, ScreenHeader, SecondaryButton, TextInput, Textarea } from '../components/ui'
 
 function emptyIngredient() {
@@ -22,7 +22,7 @@ export default function MenuEditScreen({ menuId, onBack, onDone }) {
   const [addingCategory, setAddingCategory] = useState(false)
   const [newCategoryName, setNewCategoryName] = useState('')
 
-  const knownCategories = getAllCategories(menus)
+  const knownCategories = getOrderedCategories(menus, family.category_order)
   const categories = knownCategories.includes(category)
     ? knownCategories
     : [...knownCategories.filter((c) => c !== 'その他'), category, 'その他']
@@ -158,8 +158,12 @@ export default function MenuEditScreen({ menuId, onBack, onDone }) {
                 <TextInput placeholder="適量 / 少々 など" value={row.displayText} onChange={(e) => updateIngredient(row.key, { displayText: e.target.value })} />
               ) : (
                 <div className="flex gap-1.5">
-                  <TextInput type="number" step="any" placeholder="数量" value={row.quantity} onChange={(e) => updateIngredient(row.key, { quantity: e.target.value })} className="w-24" />
-                  <TextInput placeholder="単位（g, 個, 大さじ…）" value={row.unit} onChange={(e) => updateIngredient(row.key, { unit: e.target.value })} className="flex-1" />
+                  <div className="w-20 shrink-0">
+                    <TextInput type="number" step="any" placeholder="数量" value={row.quantity} onChange={(e) => updateIngredient(row.key, { quantity: e.target.value })} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <TextInput placeholder="単位（g, 個, 大さじ…）" value={row.unit} onChange={(e) => updateIngredient(row.key, { unit: e.target.value })} />
+                  </div>
                 </div>
               )}
               <label className="flex items-center gap-1.5 text-xs text-stone-400">

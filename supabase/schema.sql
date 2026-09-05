@@ -20,8 +20,15 @@ create table if not exists families (
   name text not null,
   join_code text not null unique,
   people_count int not null default 2 check (people_count between 1 and 10),
+  -- Preferred display order for menu categories, e.g. ["野菜","肉","その他"].
+  -- Categories not listed here keep their default relative order and are
+  -- appended after the ones that are.
+  category_order jsonb not null default '[]'::jsonb,
   created_at timestamptz not null default now()
 );
+
+-- Migration for existing projects created before category_order existed:
+-- alter table families add column if not exists category_order jsonb not null default '[]'::jsonb;
 
 -- ----------------------------------------------------------------------------
 -- family_members: links an anonymous auth user to a family.
