@@ -3,6 +3,7 @@ import { useFamily } from '../lib/FamilyContext'
 import { useMenus } from '../hooks/useMenus'
 import { getOrderedCategories } from '../lib/categories'
 import { Card, Chip, GhostButton, PrimaryButton, ScreenHeader, SecondaryButton, TextInput, Textarea } from '../components/ui'
+import { UnitPicker } from '../lib/units'
 
 function emptyIngredient() {
   return { key: crypto.randomUUID(), name: '', quantity: '', unit: '', notScalable: false, displayText: '' }
@@ -162,7 +163,7 @@ export default function MenuEditScreen({ menuId, onBack, onDone }) {
                     <TextInput type="number" step="any" placeholder="数量" value={row.quantity} onChange={(e) => updateIngredient(row.key, { quantity: e.target.value })} />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <TextInput placeholder="単位（g, 個, 大さじ…）" value={row.unit} onChange={(e) => updateIngredient(row.key, { unit: e.target.value })} />
+                    <UnitPicker value={row.unit} onChange={(u) => updateIngredient(row.key, { unit: u })} />
                   </div>
                 </div>
               )}

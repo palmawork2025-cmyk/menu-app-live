@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useFamily } from '../lib/FamilyContext'
 import { useIngredients } from '../hooks/useIngredients'
 import { Card, EmptyState, PrimaryButton, ScreenHeader, Spinner, TextInput } from '../components/ui'
+import { UnitPicker } from '../lib/units'
 
 export default function StaplesScreen({ onBack }) {
   const { family } = useFamily()
@@ -37,8 +38,8 @@ export default function StaplesScreen({ onBack }) {
             <div className="min-w-0 flex-1">
               <TextInput placeholder="食材名（例：醤油）" value={name} onChange={(e) => setName(e.target.value)} />
             </div>
-            <div className="w-20 shrink-0">
-              <TextInput placeholder="単位" value={unit} onChange={(e) => setUnit(e.target.value)} />
+            <div className="w-28 shrink-0">
+              <UnitPicker value={unit} onChange={setUnit} />
             </div>
           </div>
           <PrimaryButton onClick={handleAdd} disabled={adding || !name.trim()}>追加する</PrimaryButton>

@@ -1,24 +1,33 @@
 import { useState } from 'react'
 import { useFamily } from '../lib/FamilyContext'
 import { useMenus } from '../hooks/useMenus'
-import { Chip, EmptyState, GhostButton, Spinner, TextInput } from '../components/ui'
+import { useMenuUsageCounts } from '../hooks/useMenuUsageCounts'
+import { Chip, EmptyState, GhostButton, Select, Spinner, TextInput } from '../components/ui'
 import { CategoryIcon } from '../lib/categoryIcons'
 import { getOrderedCategories } from '../lib/categories'
 
 export default function MenuListScreen({ onOpenMenu, onNewMenu, onOpenStaples }) {
   const { family } = useFamily()
   const { menus, loading, deleteMenus } = useMenus(family.id)
+  const { counts } = useMenuUsageCounts(family.id)
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState('すべて')
+  const [sortOrder, setSortOrder] = useState('none') // none | desc | asc
   const [selectMode, setSelectMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState(() => new Set())
   const CATEGORIES = ['すべて', ...getOrderedCategories(menus, family.category_order)]
 
-  const filtered = menus.filter((m) => {
+  let filtered = menus.filter((m) => {
     const matchesCategory = category === 'すべて' || m.category === category
     const matchesQuery = m.name.toLowerCase().includes(query.toLowerCase())
     return matchesCategory && matchesQuery
   })
+  if (sortOrder !== 'none') {
+    filtered = [...filtered].sort((a, b) => {
+      const diff = (counts[a.id] || 0) - (counts[b.id] || 0)
+      return sortOrder === 'desc' ? -diff : diff
+    })
+  }
 
   function toggleSelectMode() {
     setSelectMode((v) => !v)
@@ -62,6 +71,12 @@ export default function MenuListScreen({ onOpenMenu, onNewMenu, onOpenStaples })
         ))}
       </div>
 
+      <Select value={sortOrder} onChange={(e) => setSortOrder(e.target.value)} className="text-sm">
+        <option value="none">並び替え：通常</option>
+        <option value="desc">使用回数が多い順</option>
+        <option value="asc">使用回数が少ない順</option>
+      </Select>
+
       {loading ? (
         <Spinner />
       ) : filtered.length === 0 ? (
@@ -90,7 +105,14 @@ export default function MenuListScreen({ onOpenMenu, onNewMenu, onOpenStaples })
                     <p className="truncate font-bold text-stone-700">{m.name}</p>
                     <p className="text-xs text-stone-400">{m.category} ・ 材料{m.ingredients.length}点</p>
                   </div>
-                  {!selectMode && <span className="text-stone-300">›</span>}
+                  {!selectMode && (
+                    <div className="flex shrink-0 items-center gap-1.5">
+                      <span className="rounded-full bg-stone-100 px-2 py-0.5 text-[11px] font-bold text-stone-500">
+                        {counts[m.id] || 0}回
+                      </span>
+                      <span className="text-stone-300">›</span>
+                    </div>
+                  )}
                 </button>
               </li>
             )

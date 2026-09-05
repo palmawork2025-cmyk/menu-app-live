@@ -48,6 +48,17 @@ export function TextInput({ className = '', ...props }) {
   )
 }
 
+export function Select({ className = '', children, ...props }) {
+  return (
+    <select
+      className={`w-full rounded-xl border border-stone-200 bg-white px-4 py-3 text-base text-stone-800 outline-none focus:border-orange-400 ${className}`}
+      {...props}
+    >
+      {children}
+    </select>
+  )
+}
+
 export function Textarea({ className = '', ...props }) {
   return (
     <textarea

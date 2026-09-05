@@ -7,6 +7,7 @@ import { supabase } from '../lib/supabaseClient'
 import { scaleQuantity, mergeIngredientLines, formatQuantityLine } from '../lib/quantity'
 import { todayISO, getWeekStart, getWeekDates, addDays } from '../lib/dates'
 import { sortByGroceryOrder } from '../lib/groceryOrder'
+import { UnitPicker } from '../lib/units'
 import { Card, EmptyState, GhostButton, Modal, PrimaryButton, SecondaryButton, Spinner, TextInput } from '../components/ui'
 
 export default function ShoppingListScreen({ onOpenMenu }) {
@@ -384,7 +385,7 @@ function ManualAddModal({ ingredients, onClose, onAdd }) {
               <TextInput type="number" step="any" placeholder="数量" value={quantity} onChange={(e) => setQuantity(e.target.value)} />
             </div>
             <div className="min-w-0 flex-1">
-              <TextInput placeholder="単位" value={unit} onChange={(e) => setUnit(e.target.value)} />
+              <UnitPicker value={unit} onChange={setUnit} />
             </div>
           </div>
         )}
@@ -427,7 +428,7 @@ function EditQuantityModal({ item, onClose, onSave }) {
               <TextInput type="number" step="any" placeholder="数量" value={quantity} onChange={(e) => setQuantity(e.target.value)} autoFocus />
             </div>
             <div className="min-w-0 flex-1">
-              <TextInput placeholder="単位" value={unit} onChange={(e) => setUnit(e.target.value)} />
+              <UnitPicker value={unit} onChange={setUnit} />
             </div>
           </div>
         )}
