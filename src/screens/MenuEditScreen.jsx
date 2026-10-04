@@ -1,18 +1,25 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useFamily } from '../lib/FamilyContext'
 import { useMenus } from '../hooks/useMenus'
 import { getOrderedCategories } from '../lib/categories'
 import { Card, Chip, GhostButton, PrimaryButton, ScreenHeader, SecondaryButton, TextInput, Textarea } from '../components/ui'
 import { UnitPicker } from '../lib/units'
+import { useIngredients } from '../hooks/useIngredients'
+import { IngredientNameField } from '../components/IngredientNameField'
+import { buildLastAmounts, recipeAmountFor } from '../lib/ingredientMemory'
 
 function emptyIngredient() {
-  return { key: crypto.randomUUID(), name: '', quantity: '', unit: '', notScalable: false, displayText: '' }
+  return { key: crypto.randomUUID(), name: '', quantity: '', unit: '', notScalable: false, displayText: '', unitKey: 0 }
 }
 
 export default function MenuEditScreen({ menuId, onBack, onDone }) {
   const { family } = useFamily()
   const { menus, saveMenu } = useMenus(family.id)
   const existing = menuId ? menus.find((m) => m.id === menuId) : null
+  const { ingredients: knownIngredients } = useIngredients(family.id)
+  const recipeAmounts = useMemo(() => buildLastAmounts(menus), [menus])
+  const amountFor = (n) => recipeAmountFor(n, family.grocery, recipeAmounts)
+  const [focusKey, setFocusKey] = useState(null)
 
   const [name, setName] = useState('')
   const [category, setCategory] = useState('その他')
@@ -41,6 +48,7 @@ export default function MenuEditScreen({ menuId, onBack, onDone }) {
               unit: ing.unit || '',
               notScalable: ing.quantity === null,
               displayText: ing.displayText || '',
+              unitKey: 0,
             }))
           : [emptyIngredient()]
       )
@@ -52,7 +60,27 @@ export default function MenuEditScreen({ menuId, onBack, onDone }) {
     setIngredients((rows) => rows.map((r) => (r.key === key ? { ...r, ...patch } : r)))
   }
   function addIngredientRow() {
-    setIngredients((rows) => [...rows, emptyIngredient()])
+    const row = emptyIngredient()
+    setIngredients((rows) => [...rows, row])
+    setFocusKey(row.key)
+  }
+
+  /** 登録済みの食材を選んだら、前回の分量・単位を入れる(手入力の場合は数量が空欄のときだけ) */
+  function recallAmount(key, pickedName, { fromSuggestion }) {
+    const last = amountFor(pickedName)
+    const known = knownIngredients.find((i) => i.name === pickedName)
+    setIngredients((rows) => rows.map((r) => {
+      if (r.key !== key) return r
+      if (!fromSuggestion && (r.quantity !== '' || r.notScalable)) return r
+      if (last && (last.quantity === null || last.quantity === undefined)) {
+        return { ...r, name: pickedName, notScalable: true, displayText: last.displayText || '適量', quantity: '', unit: '', unitKey: r.unitKey + 1 }
+      }
+      if (last) {
+        return { ...r, name: pickedName, notScalable: false, quantity: String(last.quantity), unit: last.unit || '', unitKey: r.unitKey + 1 }
+      }
+      if (known?.default_unit) return { ...r, name: pickedName, unit: known.default_unit, unitKey: r.unitKey + 1 }
+      return r
+    }))
   }
   function removeIngredientRow(key) {
     setIngredients((rows) => (rows.length > 1 ? rows.filter((r) => r.key !== key) : rows))
@@ -149,10 +177,20 @@ export default function MenuEditScreen({ menuId, onBack, onDone }) {
 
         <Card className="space-y-2">
           <h2 className="font-bold text-stone-700">材料</h2>
+          <p className="text-xs text-stone-400">一度使った食材は候補に出ます。選ぶと前回の分量が自動で入ります。</p>
           {ingredients.map((row) => (
             <div key={row.key} className="space-y-1.5 rounded-xl bg-stone-50 p-2.5">
               <div className="flex gap-1.5">
-                <TextInput placeholder="食材名" value={row.name} onChange={(e) => updateIngredient(row.key, { name: e.target.value })} className="flex-1" />
+                <IngredientNameField
+                  placeholder="食材名（例：玉ねぎ）"
+                  value={row.name}
+                  onChange={(v) => updateIngredient(row.key, { name: v })}
+                  onPick={(picked, opts) => recallAmount(row.key, picked, opts)}
+                  ingredients={knownIngredients}
+                  amountFor={amountFor}
+                  autoFocus={row.key === focusKey}
+                  className="flex-1"
+                />
                 <button onClick={() => removeIngredientRow(row.key)} className="rounded-lg px-2 text-stone-300 active:bg-stone-200" aria-label="削除">✕</button>
               </div>
               {row.notScalable ? (
@@ -163,7 +201,7 @@ export default function MenuEditScreen({ menuId, onBack, onDone }) {
                     <TextInput type="number" step="any" placeholder="数量" value={row.quantity} onChange={(e) => updateIngredient(row.key, { quantity: e.target.value })} />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <UnitPicker value={row.unit} onChange={(u) => updateIngredient(row.key, { unit: u })} />
+                    <UnitPicker key={row.unitKey} value={row.unit} onChange={(u) => updateIngredient(row.key, { unit: u })} />
                   </div>
                 </div>
               )}

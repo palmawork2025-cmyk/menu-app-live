@@ -15,6 +15,7 @@ export function useMealPlan(familyId, startISO, endISO) {
       .gte('plan_date', startISO)
       .lte('plan_date', endISO)
       .order('sort_order')
+      .order('created_at')
     if (error) {
       console.error(error)
     } else {
@@ -48,11 +49,29 @@ export function useMealPlan(familyId, startISO, endISO) {
     await reload()
   }, [reload])
 
+  /**
+   * ドラッグでの並び替え・別の日への移動を保存する。
+   * updates: [{ id, plan_date, sort_order }] — 変わったものだけ
+   */
+  const moveEntries = useCallback(async (updates) => {
+    if (!updates.length) return
+    const byId = new Map(updates.map((u) => [u.id, u]))
+    setEntries((prev) => prev.map((e) => (byId.has(e.id) ? { ...e, ...byId.get(e.id) } : e)))
+    const results = await Promise.all(
+      updates.map((u) =>
+        supabase.from('meal_plan_entries').update({ plan_date: u.plan_date, sort_order: u.sort_order }).eq('id', u.id)
+      )
+    )
+    const firstError = results.find((r) => r.error)?.error
+    await reload()
+    if (firstError) throw firstError
+  }, [reload])
+
   const entriesByDate = {}
   for (const e of entries) {
     if (!entriesByDate[e.plan_date]) entriesByDate[e.plan_date] = []
     entriesByDate[e.plan_date].push(e)
   }
 
-  return { entries, entriesByDate, loading, addMenuToDate, removeEntry, reload }
+  return { entries, entriesByDate, loading, addMenuToDate, removeEntry, moveEntries, reload }
 }

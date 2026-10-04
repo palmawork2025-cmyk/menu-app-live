@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState, useCallback } from 'react'
 import { supabase, isSupabaseConfigured } from './supabaseClient'
 import { seedInitialMenus } from './seedFamilyData'
+import { joinCategoryOrder, normalizeGrocery, splitCategoryOrder } from './familySettings'
 
 const FamilyContext = createContext(null)
 
@@ -36,9 +37,36 @@ export function FamilyProvider({ children }) {
       setStatus('needs-family')
       return
     }
-    setFamily({ ...data, category_order: data.category_order || [] })
+    const { categoryOrder, grocery } = splitCategoryOrder(data.category_order)
+    setFamily({ ...data, category_order: categoryOrder, grocery })
     setStatus('ready')
   }, [])
+
+  // Keep family-level settings (people count, category order, 売り場 settings)
+  // in sync across the family's phones.
+  const familyId = family?.id
+  useEffect(() => {
+    if (!familyId) return
+    const channel = supabase
+      .channel(`family-${familyId}`)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'families', filter: `id=eq.${familyId}` }, (payload) => {
+        const row = payload.new || {}
+        setFamily((f) => {
+          if (!f) return f
+          const next = { ...f }
+          if (row.name !== undefined) next.name = row.name
+          if (row.people_count !== undefined) next.people_count = row.people_count
+          if (row.category_order !== undefined) {
+            const { categoryOrder, grocery } = splitCategoryOrder(row.category_order)
+            next.category_order = categoryOrder
+            next.grocery = grocery
+          }
+          return next
+        })
+      })
+      .subscribe()
+    return () => supabase.removeChannel(channel)
+  }, [familyId])
 
   useEffect(() => {
     if (!isSupabaseConfigured) {
@@ -153,7 +181,30 @@ export function FamilyProvider({ children }) {
     setFamily((f) => (f ? { ...f, category_order: order } : f))
     const { error: err } = await supabase
       .from('families')
-      .update({ category_order: order })
+      .update({ category_order: joinCategoryOrder(order, family.grocery || normalizeGrocery()) })
+      .eq('id', family.id)
+    if (err) throw err
+  }, [family])
+
+  /**
+   * Update the shared 売り場 settings. Reads the latest value first so two
+   * phones editing at about the same time don't wipe each other's changes.
+   * `mutate(grocery) => nextGrocery`
+   */
+  const updateGrocery = useCallback(async (mutate) => {
+    if (!family) return
+    const { data, error: readErr } = await supabase
+      .from('families')
+      .select('category_order')
+      .eq('id', family.id)
+      .maybeSingle()
+    if (readErr) throw readErr
+    const latest = splitCategoryOrder(data?.category_order)
+    const nextGrocery = normalizeGrocery(mutate(latest.grocery))
+    setFamily((f) => (f ? { ...f, category_order: latest.categoryOrder, grocery: nextGrocery } : f))
+    const { error: err } = await supabase
+      .from('families')
+      .update({ category_order: joinCategoryOrder(latest.categoryOrder, nextGrocery) })
       .eq('id', family.id)
     if (err) throw err
   }, [family])
@@ -170,7 +221,8 @@ export function FamilyProvider({ children }) {
     updatePeopleCount,
     updateFamilyName,
     updateCategoryOrder,
-  }), [status, error, userId, family, displayName, createFamily, joinFamily, leaveFamily, updatePeopleCount, updateFamilyName, updateCategoryOrder])
+    updateGrocery,
+  }), [status, error, userId, family, displayName, createFamily, joinFamily, leaveFamily, updatePeopleCount, updateFamilyName, updateCategoryOrder, updateGrocery])
 
   return <FamilyContext.Provider value={value}>{children}</FamilyContext.Provider>
 }

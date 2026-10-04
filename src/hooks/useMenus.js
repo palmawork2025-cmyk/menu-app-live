@@ -13,7 +13,7 @@ export function useMenus(familyId) {
     if (!familyId) return
     const { data, error } = await supabase
       .from('menus')
-      .select('id, name, category, steps, base_people, menu_ingredients(id, quantity, unit, display_text, sort_order, ingredient_id, ingredients(id, name, default_unit, is_staple))')
+      .select('id, name, category, steps, base_people, updated_at, menu_ingredients(id, quantity, unit, display_text, sort_order, ingredient_id, ingredients(id, name, default_unit, is_staple))')
       .eq('family_id', familyId)
       .order('name')
     if (error) {

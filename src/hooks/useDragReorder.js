@@ -17,10 +17,15 @@ export function useDragReorder(ids, onCommit) {
   const orderRef = useRef(order)
   orderRef.current = order
 
+  // ids is usually a fresh array every render, so compare by content --
+  // depending on the array itself would re-render endlessly.
+  const idsKey = ids.join('|')
+  const idsRef = useRef(ids)
+  idsRef.current = ids
   useEffect(() => {
     if (draggingIdRef.current) return // don't clobber order mid-drag
-    setOrder(ids)
-  }, [ids])
+    setOrder(idsRef.current)
+  }, [idsKey])
 
   function setRowRef(id, el) {
     if (el) rowRefs.current.set(id, el)

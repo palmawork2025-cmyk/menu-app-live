@@ -72,3 +72,59 @@ export function sortForDisplay(items) {
   const rest = sortByGroceryOrder(items.filter((i) => i.sort_order === null || i.sort_order === undefined))
   return [...manual, ...rest]
 }
+
+// ----------------------------------------------------------------------------
+// 売り場 (store sections) that the family can reorder / add / rename.
+// Settings live in family.grocery = { sections, overrides } (see familySettings.js).
+// ----------------------------------------------------------------------------
+
+export const OTHER_SECTION = 'その他'
+export const DEFAULT_SECTIONS = [...SECTIONS.map((s) => s.label), '日用品', OTHER_SECTION]
+
+const EXTRA_KEYWORDS = {
+  日用品: ['ティッシュ', 'トイレットペーパー', '洗剤', 'ラップ', 'キッチンペーパー', 'スポンジ', 'ゴミ袋', 'シャンプー', '電池'],
+}
+
+/** The family's 売り場 in store-walk order. "その他" is always present (last if not placed). */
+export function getSections(grocery) {
+  const saved = grocery?.sections?.length ? grocery.sections : DEFAULT_SECTIONS
+  const unique = Array.from(new Set(saved))
+  return unique.includes(OTHER_SECTION) ? unique : [...unique, OTHER_SECTION]
+}
+
+/** Which 売り場 an item belongs to: the user's choice first, then a keyword guess. */
+export function sectionOf(name, grocery) {
+  const sections = getSections(grocery)
+  const chosen = grocery?.overrides?.[name]
+  if (chosen && sections.includes(chosen)) return chosen
+  for (const section of SECTIONS) {
+    if (sections.includes(section.label) && section.keywords.some((k) => name.includes(k))) return section.label
+  }
+  for (const [label, keywords] of Object.entries(EXTRA_KEYWORDS)) {
+    if (sections.includes(label) && keywords.some((k) => name.includes(k))) return label
+  }
+  return OTHER_SECTION
+}
+
+/**
+ * Group items by 売り場 in the family's store-walk order. Inside a section,
+ * manually dragged items keep their order and anything newer goes after them
+ * (oldest first) -- so items added later still land in the right 売り場.
+ */
+export function groupBySection(items, grocery) {
+  const sections = getSections(grocery)
+  const buckets = new Map(sections.map((s) => [s, []]))
+  for (const item of items) buckets.get(sectionOf(item.name, grocery)).push(item)
+  return sections
+    .map((section) => ({
+      section,
+      items: buckets.get(section).slice().sort((a, b) => {
+        const aManual = a.sort_order !== null && a.sort_order !== undefined
+        const bManual = b.sort_order !== null && b.sort_order !== undefined
+        if (aManual && bManual) return a.sort_order - b.sort_order
+        if (aManual !== bManual) return aManual ? -1 : 1
+        return String(a.created_at).localeCompare(String(b.created_at))
+      }),
+    }))
+    .filter((g) => g.items.length > 0)
+}
